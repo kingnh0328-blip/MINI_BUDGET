@@ -1,0 +1,22 @@
+# 가상환경
+venv/
+.venv/
+env/
+.env/
+
+# Python 캐시
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+# 데이터 파일 (개인정보 보호)
+budget_data.json
+
+# IDE 설정
+.vscode/
+.idea/
+
+# 맥 OS
+.DS_Store
