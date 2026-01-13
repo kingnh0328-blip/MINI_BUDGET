@@ -1,5 +1,3 @@
-<<<<<<< HEAD
-=======
 # 💰 나만의 미니 가계부 (Mini Ledger)
 
 <div align="center">
@@ -651,4 +649,3 @@ Made with ❤️ using Python & Streamlit
 [맨 위로 이동](#-나만의-미니-가계부-mini-ledger)
 
 </div>
->>>>>>> fd23ad9bb4b7f0f265b4d9e38fb12f2dadfd06bf

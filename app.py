@@ -6,7 +6,7 @@ Streamlit을 사용한 가계부 웹 애플리케이션
 import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
-import plotly as go
+import plotly.express as px
 from datetime import datetime, date
 from streamlit_calendar import calendar
 from ledger import (
@@ -25,7 +25,7 @@ st.set_page_config(
 )
 
 # Repository와 Service 초기화
-st.cache_resource
+@st.cache_resource
 def get_services():
     """
     Repository와 Service 객체를 생성하고 캐싱합니다.
