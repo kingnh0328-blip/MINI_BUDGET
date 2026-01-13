@@ -36,7 +36,7 @@ def get_services():
 repository, ledger_service = get_services()
 
 # 앱 제목
-st.tiobjectstle("💰 나만의 미니 가계부")
+st.title("💰 나만의 미니 가계부")
 st.markdown("---")
 
 # 사이드바: 메뉴 선택
