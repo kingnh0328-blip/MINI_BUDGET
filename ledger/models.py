@@ -21,9 +21,8 @@ Example:
 """
 
 from datetime import datetime
-from typing import Literal, Optional, Dict, Any
+from typing import Literal, Optional, Dict, Any, List
 from enum import Enum
-
 
 class TransactionType(Enum):
     """
