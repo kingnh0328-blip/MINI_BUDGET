@@ -5,7 +5,11 @@ Streamlit을 사용한 가계부 웹 애플리케이션
 
 import streamlit as st
 import pandas as pd
+<<<<<<< HEAD
 import plotly.graph_objects as go
+=======
+import plotly as go
+>>>>>>> fd23ad9bb4b7f0f265b4d9e38fb12f2dadfd06bf
 from datetime import datetime, date
 from ledger import (
     Transaction,
