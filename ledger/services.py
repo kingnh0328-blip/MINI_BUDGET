@@ -7,6 +7,7 @@ from typing import Dict, List, Tuple
 from datetime import datetime, timedelta
 import pandas as pd
 import yfinance as yf
+import requests
 from ledger.models import Transaction
 from ledger.repository import LedgerRepository
 
@@ -137,49 +138,45 @@ class StockService:
     주식 데이터를 처리하는 서비스 클래스
     yfinance 라이브러리를 사용하여 주가 정보를 가져옵니다.
     """
-    
+
+class StockService:
     @staticmethod
-    def get_stock_data(
-        ticker: str,
-        period: str = '1mo'
-    ) -> Tuple[pd.DataFrame, bool, str]:
-        """
-        특정 주식의 가격 데이터를 가져옵니다.
-        
-        Args:
-            ticker: 주식 티커 심볼 (예: 'AAPL', 'TSLA')
-            period: 조회 기간 ('1d', '5d', '1mo', '3mo', '6mo', '1y', '5y')
-        
-        Returns:
-            tuple: (DataFrame, 성공여부, 메시지)
-                - DataFrame: 주가 데이터 (날짜, Open, High, Low, Close, Volume)
-                - bool: 데이터 조회 성공 여부
-                - str: 결과 메시지 또는 오류 메시지
-        """
+    def get_stock_data(ticker: str, period: str = '1mo') -> Tuple[pd.DataFrame, bool, str]:
+        # [해결 1] try 문을 시작합니다.
         try:
-            # 티커 심볼을 대문자로 변환
             ticker = ticker.upper().strip()
-            
             if not ticker:
                 return pd.DataFrame(), False, "티커 심볼을 입력해주세요."
             
-            # yfinance를 사용하여 주식 데이터 다운로드
-            stock = yf.Ticker(ticker)
-            df = stock.history(period=period)
+            # 브라우저 세션 설정 (서버 차단 우회)
+            session = requests.Session()
+            session.headers.update({
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+            })
             
-            # 데이터가 비어있는지 확인
-            if df.empty:
-                return pd.DataFrame(), False, f"'{ticker}' 티커에 대한 데이터를 찾을 수 없습니다. 올바른 티커인지 확인해주세요."
+            # 데이터 다운로드
+            df = yf.download(
+                ticker, 
+                period=period, 
+                auto_adjust=True, 
+                progress=False, 
+                session=session
+            )
             
-            # 인덱스를 리셋하여 날짜를 컬럼으로 만듦
+            if df is None or len(df) == 0:
+                return pd.DataFrame(), False, f"'{ticker}' 데이터를 찾을 수 없습니다."
+            
+            # 다중 인덱스 평면화 및 정제
+            if isinstance(df.columns, pd.MultiIndex):
+                df.columns = [col[0] if isinstance(col, tuple) else col for col in df.columns]
+            
             df = df.reset_index()
-            
             return df, True, f"'{ticker}' 데이터를 성공적으로 불러왔습니다."
-            
+
+        # [해결 1] try와 짝꿍인 except 절을 반드시 작성해야 합니다.
         except Exception as e:
-            error_msg = f"주식 데이터 조회 중 오류 발생: {str(e)}"
-            return pd.DataFrame(), False, error_msg
-    
+            return pd.DataFrame(), False, f"주식 데이터 조회 중 오류 발생: {str(e)}"
+   
     @staticmethod
     def get_stock_info(ticker: str) -> Dict:
         """
