@@ -23,7 +23,7 @@ st.set_page_config(
 )
 
 # Repository와 Service 초기화
-st.cache_resource
+@st.cache_resource
 def get_services():
     """
     Repository와 Service 객체를 생성하고 캐싱합니다.
