@@ -368,30 +368,32 @@ elif menu == "📉 주식 차트":
                         st.dataframe(df, use_container_width=True, hide_index=True)
                 else:
                     st.error(message)
+
 # ========== 주식 매매 기록 섹션 ==========
-st.markdown("---")
-st.header("📊 주식 매매 기록")
-st.info("💡 매수/매도한 주식을 기록하면 자동으로 가계부에 반영됩니다.")
+    st.markdown("---")
+    st.header("📊 주식 매매 기록")
+    st.info("💡 매수/매도한 주식을 기록하면 자동으로 가계부에 반영됩니다.")
     
     # 주식 매매 입력 폼
-col1, col2, col3 = st.columns(3)
+    col1, col2, col3 = st.columns(3)
     
-with col1:
-    # 티커 입력
-    stock_ticker = st.text_input(
-        "티커 심볼 *",
-        value=ticker if ticker else "",
-        placeholder="예: AAPL",
-        help="매매한 주식의 티커를 입력하세요"
-    )
+    with col1:
+        # 티커 입력
+        stock_ticker = st.text_input(
+            "티커 심볼 *",
+            value="",
+            placeholder="예: AAPL",
+            help="매매한 주식의 티커를 입력하세요"
+        )
     
-with col2:
+    with col2:
         # 매매 구분
         trade_type = st.selectbox(
             "매매 구분 *",
             ["매수", "매도"]
         )
     
+    with col3:
         # 거래 날짜
         trade_date = st.date_input(
             "거래 날짜 *",
@@ -400,51 +402,54 @@ with col2:
         )
     
     # 두 번째 줄
-        col4, col5, col6 = st.columns(3)
+    col4, col5, col6 = st.columns(3)
     
-with col4:
-    # 단가 (USD)
-    unit_price = st.number_input(
-        "단가 (USD) *",
-        min_value=0.0,
-        value=0.0,
-        step=0.01,
-        format="%.2f",
-        help="주당 가격 (달러)"
-    )
+    with col4:
+        # 단가 (USD)
+        unit_price = st.number_input(
+            "단가 (USD) *",
+            min_value=0.0,
+            value=0.0,
+            step=0.01,
+            format="%.2f",
+            help="주당 가격 (달러)"
+        )
     
-with col5:
-    # 수량
-    quantity = st.number_input(
-        "수량 (주) *",
-        min_value=0,
-        value=0,
-        step=1,
-        help="매수/매도한 주식 수량"
-    )
+    with col5:
+        # 수량
+        quantity = st.number_input(
+            "수량 (주) *",
+            min_value=0,
+            value=0,
+            step=1,
+            help="매수/매도한 주식 수량"
+        )
     
-with col6:
-    # 환율 (선택사항)
-    exchange_rate = st.number_input(
-        "환율 (KRW/USD)",
-        min_value=0.0,
-        value=1350.0,
-        step=10.0,
-        format="%.2f",
-        help="1달러 당 원화 환율 (선택사항)"
-    )
+    with col6:
+        # 환율 (선택사항)
+        exchange_rate = st.number_input(
+            "환율 (KRW/USD)",
+            min_value=0.0,
+            value=1350.0,
+            step=10.0,
+            format="%.2f",
+            help="1달러 당 원화 환율 (선택사항)"
+        )
     
     # 자동 계산된 금액 표시
-if unit_price > 0 and quantity > 0:
-    amount_usd = unit_price * quantity
-    amount_krw = amount_usd * exchange_rate
+    if unit_price > 0 and quantity > 0:
+        amount_usd = unit_price * quantity
+        amount_krw = amount_usd * exchange_rate
         
-    st.markdown("### 💰 계산된 금액")
-    col_calc1, col_calc2 = st.columns(2)
-    with col_calc1:
-        st.metric("총액 (USD)", f"${amount_usd:,.2f}")
-    with col_calc2:
-        st.metric("총액 (KRW)", f"₩{amount_krw:,.0f}")
+        st.markdown("### 💰 계산된 금액")
+        col_calc1, col_calc2 = st.columns(2)
+        with col_calc1:
+            st.metric("총액 (USD)", f"${amount_usd:,.2f}")
+        with col_calc2:
+            st.metric("총액 (KRW)", f"₩{amount_krw:,.0f}")
+    else:
+        st.markdown("### 💰 계산된 금액")
+        st.info("단가와 수량을 입력하면 자동으로 계산됩니다.")
     
     # 추가 메모
     trade_memo = st.text_area(
