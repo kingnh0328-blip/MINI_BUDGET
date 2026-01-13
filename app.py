@@ -7,6 +7,7 @@ import streamlit as st
 import pandas as pd
 import plotly as go
 from datetime import datetime, date
+from streamlit_calendar import calendar
 from ledger import (
     Transaction,
     LedgerRepository,
@@ -42,11 +43,22 @@ st.markdown("---")
 # 사이드바: 메뉴 선택
 menu = st.sidebar.selectbox(
     "메뉴",
-    ["📝 거래 입력", "📊 가계부 조회", "📈 통계", "📉 주식 차트"]
+    ["🗓️ 달력 대시보드", "📝 거래 입력", "📊 가계부 조회", "📈 통계", "📉 주식 차트"]
 )
 
 # ========== 1. 거래 입력 메뉴 ==========
-if menu == "📝 거래 입력":
+if menu == "🗓️ 달력 대시보드":
+    st.header("🗓️ 나의 재무 달력")
+    all_tx = repository.get_all_transactions()
+    events = ledger_service.get_calendar_events(all_tx) # services.py에 추가한 함수!
+
+    calendar_options = {
+        "headerToolbar": {"left": "prev,next today", "center": "title", "right": "dayGridMonth"},
+        "initialView": "dayGridMonth",
+    }
+    state = calendar(events=events, options=calendar_options)
+    
+elif menu == "📝 거래 입력":
     st.header("거래 입력")
     
     # 두 개의 컬럼으로 나누어 입력 폼 구성
