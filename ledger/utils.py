@@ -41,3 +41,23 @@ def get_month_range(year: int, month: int) -> Tuple[datetime, datetime]:
     end_date = datetime(year, month, last_day, 23, 59, 59)
     
     return start_date, end_date
+def format_date(date_obj: datetime, format_str: str = '%Y-%m-%d') -> str:
+    """
+    datetime 객체를 지정된 형식의 문자열로 변환합니다.
+    
+    Args:
+        date_obj: datetime 객체
+        format_str: 날짜 형식 (기본값: 'YYYY-MM-DD')
+        
+    Returns:
+        str: 포맷팅된 날짜 문자열
+        
+    Examples:
+        >>> from datetime import datetime
+        >>> date = datetime(2024, 1, 15)
+        >>> format_date(date)
+        '2024-01-15'
+        >>> format_date(date, '%Y년 %m월 %d일')
+        '2024년 01월 15일'
+    """
+    return date_obj.strftime(format_str)
