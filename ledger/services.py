@@ -51,6 +51,29 @@ class LedgerService:
             'expense': total_expense,
             'balance': balance
         }
+    def get_calendar_events(self, transactions: list) -> list[dict]:
+        """거래 데이터를 달력 이벤트 형식으로 변환"""
+        events = []
+        for t in transactions:
+            # 기본 색상 설정 (수입: 파랑, 지출: 빨강)
+            color = "#1C83E1" if t.transaction_type == "수입" else "#FF4B4B"
+            
+            # 만약 카테고리에 '투자'라는 글자가 있으면 초록색으로!
+            if "투자" in t.category:
+                color = "#28A745"
+            
+            events.append({
+                "title": f"[{t.category}] {int(t.amount):,}원",
+                "start": t.date.strftime("%Y-%m-%d"),
+                "backgroundColor": color,
+                "borderColor": color,
+                "allDay": True,
+                "extendedProps": {
+                    "description": t.description,
+                    "type": t.transaction_type
+                }
+            })
+        return events
     
     def get_category_statistics(
         self,
