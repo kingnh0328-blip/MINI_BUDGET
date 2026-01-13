@@ -5,7 +5,7 @@ Streamlit을 사용한 가계부 웹 애플리케이션
 
 import streamlit as st
 import pandas as pd
-import plotly.graph_objects as go
+import plotly as go
 from datetime import datetime, date
 from ledger import (
     Transaction,
@@ -23,7 +23,7 @@ st.set_page_config(
 )
 
 # Repository와 Service 초기화
-@st.cache_resource
+st.cache_resource
 def get_services():
     """
     Repository와 Service 객체를 생성하고 캐싱합니다.
@@ -36,7 +36,7 @@ def get_services():
 repository, ledger_service = get_services()
 
 # 앱 제목
-st.title("💰 나만의 미니 가계부")
+st.tiobjectstle("💰 나만의 미니 가계부")
 st.markdown("---")
 
 # 사이드바: 메뉴 선택
