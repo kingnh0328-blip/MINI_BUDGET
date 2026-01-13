@@ -11,7 +11,6 @@ import requests
 from ledger.models import Transaction
 from ledger.repository import LedgerRepository
 
-
 class LedgerService:
     """
     가계부 관련 비즈니스 로직을 처리하는 서비스 클래스
@@ -52,6 +51,29 @@ class LedgerService:
             'expense': total_expense,
             'balance': balance
         }
+    def get_calendar_events(self, transactions: list) -> list[dict]:
+        """거래 데이터를 달력 이벤트 형식으로 변환"""
+        events = []
+        for t in transactions:
+            # 기본 색상 설정 (수입: 파랑, 지출: 빨강)
+            color = "#1C83E1" if t.transaction_type == "수입" else "#FF4B4B"
+            
+            # 만약 카테고리에 '투자'라는 글자가 있으면 초록색으로!
+            if "투자" in t.category:
+                color = "#28A745"
+            
+            events.append({
+                "title": f"[{t.category}] {int(t.amount):,}원",
+                "start": t.date.strftime("%Y-%m-%d"),
+                "backgroundColor": color,
+                "borderColor": color,
+                "allDay": True,
+                "extendedProps": {
+                    "description": t.description,
+                    "type": t.transaction_type
+                }
+            })
+        return events
     
     def get_category_statistics(
         self,
@@ -116,6 +138,60 @@ class LedgerService:
             'transaction_count': len(transactions)
         }
     
+    def get_calendar_events(self, transactions: List[Transaction]) -> List[Dict]:
+        """
+        거래 내역을 캘린더 이벤트 형식으로 변환합니다.
+
+        Args:
+        transactions: Transaction 객체 리스트
+        
+        Returns:
+        List[Dict]: 캘린더 이벤트 리스트
+        
+        Examples:
+        events = service.get_calendar_events(transactions)
+        print(events[0])
+        {'title': '[AAPL] 10주 매수', 'start': '2024-01-15', 
+         'backgroundColor': '#FF6B6B', 'borderColor': '#FF6B6B', 
+         'textColor': '#FFFFFF'}
+        
+        """
+        events = []
+    
+        for transaction in transactions:
+        # 주식 거래인지 확인
+            is_stock = transaction.category in ["주식매수", "주식매도"]
+        
+        # 이벤트 제목 생성
+        if is_stock:
+            # 주식 거래: description 사용 (티커와 수량 정보 포함)
+            title = transaction.description if transaction.description else f"{transaction.category}"
+        else:
+            # 일반 거래: 카테고리 + 금액
+            title = f"{transaction.category} ₩{transaction.amount:,.0f}"
+        
+        # 이벤트 색상 설정
+        if transaction.category == "주식매수":
+            color = "#FF6B6B"  # 빨간색 (매수)
+        elif transaction.category == "주식매도":
+            color = "#4ECDC4"  # 청록색 (매도)
+        elif transaction.transaction_type == "수입":
+            color = "#51CF66"  # 초록색 (일반 수입)
+        else:
+            color = "#FFA94D"  # 주황색 (일반 지출)
+        
+        # 캘린더 이벤트 객체 생성
+        event = {
+            "title": title,
+            "start": transaction.date.strftime("%Y-%m-%d"),
+            "backgroundColor": color,
+            "borderColor": color,
+            "textColor": "#FFFFFF"
+        }
+   
+        events.append(event)
+        return events
+
     def get_daily_transactions(self, date: datetime) -> List[Transaction]:
         """
         특정 날짜의 모든 거래를 조회합니다.

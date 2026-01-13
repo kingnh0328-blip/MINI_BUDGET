@@ -6,8 +6,9 @@ Streamlit을 사용한 가계부 웹 애플리케이션
 import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
-import plotly as go
+import plotly.express as px
 from datetime import datetime, date
+from streamlit_calendar import calendar
 from ledger import (
     Transaction,
     LedgerRepository,
@@ -43,11 +44,22 @@ st.markdown("---")
 # 사이드바: 메뉴 선택
 menu = st.sidebar.selectbox(
     "메뉴",
-    ["📝 거래 입력", "📊 가계부 조회", "📈 통계", "📉 주식 차트"]
+    ["🗓️ 달력 대시보드", "📝 거래 입력", "📊 가계부 조회", "📈 통계", "📉 주식 차트"]
 )
 
 # ========== 1. 거래 입력 메뉴 ==========
-if menu == "📝 거래 입력":
+if menu == "🗓️ 달력 대시보드":
+    st.header("🗓️ 나의 재무 달력")
+    all_tx = repository.get_all_transactions()
+    events = ledger_service.get_calendar_events(all_tx) # services.py에 추가한 함수!
+
+    calendar_options = {
+        "headerToolbar": {"left": "prev,next today", "center": "title", "right": "dayGridMonth"},
+        "initialView": "dayGridMonth",
+    }
+    state = calendar(events=events, options=calendar_options)
+    
+elif menu == "📝 거래 입력":
     st.header("거래 입력")
     
     # 두 개의 컬럼으로 나누어 입력 폼 구성
@@ -356,6 +368,146 @@ elif menu == "📉 주식 차트":
                         st.dataframe(df, use_container_width=True, hide_index=True)
                 else:
                     st.error(message)
+# ========== 주식 매매 기록 섹션 ==========
+st.markdown("---")
+st.header("📊 주식 매매 기록")
+st.info("💡 매수/매도한 주식을 기록하면 자동으로 가계부에 반영됩니다.")
+    
+    # 주식 매매 입력 폼
+col1, col2, col3 = st.columns(3)
+    
+with col1:
+    # 티커 입력
+    stock_ticker = st.text_input(
+        "티커 심볼 *",
+        value=ticker if ticker else "",
+        placeholder="예: AAPL",
+        help="매매한 주식의 티커를 입력하세요"
+    )
+    
+with col2:
+        # 매매 구분
+        trade_type = st.selectbox(
+            "매매 구분 *",
+            ["매수", "매도"]
+        )
+    
+        # 거래 날짜
+        trade_date = st.date_input(
+            "거래 날짜 *",
+            value=date.today(),
+            help="주식을 사거나 판 날짜"
+        )
+    
+    # 두 번째 줄
+        col4, col5, col6 = st.columns(3)
+    
+with col4:
+    # 단가 (USD)
+    unit_price = st.number_input(
+        "단가 (USD) *",
+        min_value=0.0,
+        value=0.0,
+        step=0.01,
+        format="%.2f",
+        help="주당 가격 (달러)"
+    )
+    
+with col5:
+    # 수량
+    quantity = st.number_input(
+        "수량 (주) *",
+        min_value=0,
+        value=0,
+        step=1,
+        help="매수/매도한 주식 수량"
+    )
+    
+with col6:
+    # 환율 (선택사항)
+    exchange_rate = st.number_input(
+        "환율 (KRW/USD)",
+        min_value=0.0,
+        value=1350.0,
+        step=10.0,
+        format="%.2f",
+        help="1달러 당 원화 환율 (선택사항)"
+    )
+    
+    # 자동 계산된 금액 표시
+if unit_price > 0 and quantity > 0:
+    amount_usd = unit_price * quantity
+    amount_krw = amount_usd * exchange_rate
+        
+    st.markdown("### 💰 계산된 금액")
+    col_calc1, col_calc2 = st.columns(2)
+    with col_calc1:
+        st.metric("총액 (USD)", f"${amount_usd:,.2f}")
+    with col_calc2:
+        st.metric("총액 (KRW)", f"₩{amount_krw:,.0f}")
+    
+    # 추가 메모
+    trade_memo = st.text_area(
+        "메모 (선택사항)",
+        placeholder="매매 이유나 추가 정보를 입력하세요",
+        height=80
+    )
+    
+    # 저장 버튼
+    if st.button("💾 주식 거래 저장", type="primary", use_container_width=True):
+        # 입력 검증
+        if not stock_ticker:
+            st.error("❌ 티커 심볼을 입력해주세요.")
+        elif unit_price <= 0:
+            st.error("❌ 단가는 0보다 커야 합니다.")
+        elif quantity <= 0:
+            st.error("❌ 수량은 0보다 커야 합니다.")
+        else:
+            try:
+                # 금액 계산 (원화)
+                total_amount = unit_price * quantity * exchange_rate
+                
+                # 거래 유형 및 카테고리 설정
+                if trade_type == "매수":
+                    transaction_type = "지출"
+                    category = "주식매수"
+                    emoji = "🔴"
+                else:  # 매도
+                    transaction_type = "수입"
+                    category = "주식매도"
+                    emoji = "🔵"
+                
+                # 설명 생성
+                description = f"[{stock_ticker.upper()}] {quantity}주 {trade_type}"
+                if trade_memo:
+                    description += f" - {trade_memo}"
+                description += f" (단가: ${unit_price:.2f}, 환율: ₩{exchange_rate:.2f})"
+                
+                # Transaction 객체 생성
+                transaction = Transaction(
+                    date=datetime.combine(trade_date, datetime.min.time()),
+                    category=category,
+                    amount=total_amount,
+                    transaction_type=transaction_type,
+                    description=description
+                )
+                
+                # 데이터베이스에 저장
+                repository.save_transaction(transaction)
+                
+                # 성공 메시지
+                st.success(
+                    f"✅ {emoji} {stock_ticker.upper()} {quantity}주 {trade_type} 기록 완료!\n\n"
+                    f"💰 총액: ₩{total_amount:,.0f} ({transaction_type})"
+                )
+                
+                # 캐시 클리어하여 달력에 즉시 반영
+                st.cache_resource.clear()
+                
+                st.info("💡 '🗓️ 달력 대시보드'에서 기록을 확인하세요!")
+                
+            except Exception as e:
+                st.error(f"❌ 저장 중 오류가 발생했습니다: {str(e)}")
 
 # 사이드바: 추가 정보
 st.sidebar.markdown("---")
