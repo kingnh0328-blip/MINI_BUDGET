@@ -158,3 +158,42 @@ class LedgerRepository:
         except Exception as e:
             # 오류 발생 시 빈 DataFrame 반환
             return pd.DataFrame(columns=['date', 'category', 'amount', 'type', 'description'])
+        
+    def update_transaction(self, index: int, transaction: Transaction):
+        try:
+            df = pd.read_csv(self.csv_path, encoding='utf-8-sig')
+
+            if index < 0 or index >= len(df):
+                raise IndexError("잘못된 index입니다.")
+
+            df.loc[index] = transaction.to_dict()
+            df.to_csv(self.csv_path, index=False, encoding='utf-8-sig')
+
+        except Exception as e:
+            raise Exception(f"거래 수정 중 오류 발생: {str(e)}")
+
+    def delete_transaction(self, index: int):
+        """
+        특정 index의 거래를 삭제합니다.
+        """
+        try:
+            df = pd.read_csv(self.csv_path, encoding='utf-8-sig')
+
+            if index < 0 or index >= len(df):
+                raise IndexError("잘못된 index입니다.")
+
+            df = df.drop(index).reset_index(drop=True)
+            df.to_csv(self.csv_path, index=False, encoding='utf-8-sig')
+
+        except Exception as e:
+            raise Exception(f"거래 삭제 중 오류 발생: {str(e)}")
+    
+    def _save_all_to_csv(self, transactions: list):
+        try:
+            data = [t.to_dict() for t in transactions]
+            df = pd.DataFrame(data)
+            df.to_csv(self.csv_path, index=False, encoding='utf-8-sig')
+            return True
+        except Exception as e:
+            print(f"저장 실패: {e}")
+            return False
