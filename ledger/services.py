@@ -86,19 +86,36 @@ class LedgerService:
         return self.repository.get_transactions_by_date_range(start, end)
 
 class StockService:
+# services.py의 StockService 부분을 이렇게 수정해라냐!
+
     @staticmethod
     def get_stock_data(ticker: str, period: str = '1mo') -> Tuple[pd.DataFrame, bool, str]:
         try:
             ticker = ticker.upper().strip()
-            session = requests.Session()
-            session.headers.update({'User-Agent': 'Mozilla/5.0'})
-            df = yf.download(ticker, period=period, auto_adjust=True, progress=False, session=session)
-            if df.empty: return pd.DataFrame(), False, f"'{ticker}' 데이터를 찾을 수 없습니다."
+            if not ticker:
+                return pd.DataFrame(), False, "티커 심볼을 입력해주세요."
+            
+            # [수정] 세션(requests.Session) 설정 코드를 싹 다 지우고 아래처럼 호출해라냐!
+            df = yf.download(
+                ticker, 
+                period=period, 
+                auto_adjust=True, 
+                progress=False
+                # session=session 이 부분을 지워야 한다냐!
+            )
+            
+            if df is None or len(df) == 0:
+                return pd.DataFrame(), False, f"'{ticker}' 데이터를 찾을 수 없습니다."
+            
+            # 컬럼 정리 로직 (기존과 동일)
             if isinstance(df.columns, pd.MultiIndex):
                 df.columns = [col[0] if isinstance(col, tuple) else col for col in df.columns]
-            return df.reset_index(), True, f"'{ticker}' 데이터를 불러왔습니다."
+            
+            df = df.reset_index()
+            return df, True, f"'{ticker}' 데이터를 성공적으로 불러왔습니다."
+
         except Exception as e:
-            return pd.DataFrame(), False, str(e)
+            return pd.DataFrame(), False, f"주식 데이터 조회 중 오류 발생: {str(e)}"
    
     @staticmethod
     def get_stock_info(ticker: str) -> Dict:
