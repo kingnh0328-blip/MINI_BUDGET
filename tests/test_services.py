@@ -7,7 +7,7 @@ from datetime import datetime
 from ledger.models import Transaction
 from ledger.services import LedgerService
 from ledger.repository import LedgerRepository
-
+from unittest.mock import MagicMock
 
 @pytest.fixture
 def sample_transactions():
@@ -118,3 +118,50 @@ def test_get_category_statistics_sorting(sample_transactions):
     
     # 금액이 큰 순서대로 정렬되어 있어야 함
     assert amounts == sorted(amounts, reverse=True)
+def test_update_transaction(sample_transactions):
+    """거래 내역 수정 기능 테스트"""
+    # 1. 가짜 저장소(Mock) 만들기
+    mock_repo = MagicMock()
+    
+    # 중요! 테스트용 데이터를 변수에 따로 담아둔다냐
+    test_data = sample_transactions[:] 
+    mock_repo.get_all_transactions.return_value = test_data
+    
+    service = LedgerService(mock_repo)
+    
+    # 2. 수정할 데이터 준비
+    updated_tx = Transaction(
+        date=datetime(2024, 1, 15),
+        category="보너스",
+        amount=500000,
+        transaction_type="수입",
+        description="상반기 보너스"
+    )
+    
+    # 3. 수정 실행
+    service.update_transaction(0, updated_tx)
+    
+    # 4. 검증: 원본(sample_transactions)이 아니라 서비스가 사용한 test_data를 확인해야 한다냐!
+    assert test_data[0].category == "보너스"
+    assert test_data[0].amount == 500000
+    
+    # 저장 함수가 호출되었는지 확인
+    mock_repo._save_all_to_csv.assert_called_once()
+
+def test_delete_transaction(sample_transactions):
+    """거래 내역 삭제 기능 테스트"""
+    mock_repo = MagicMock()
+    # 복사본을 전달해서 원본 보존
+    current_data = sample_transactions[:]
+    mock_repo.get_all_transactions.return_value = current_data
+    service = LedgerService(mock_repo)
+    
+    initial_count = len(current_data)
+    
+    # 삭제 실행 (첫 번째 항목 삭제)
+    service.delete_transaction(0)
+    
+    # 검증: 개수가 하나 줄었는지 확인
+    assert len(current_data) == initial_count - 1
+    # 저장 메서드가 호출되었는지 확인
+    mock_repo._save_all_to_csv.assert_called_once()
