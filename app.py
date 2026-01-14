@@ -131,9 +131,14 @@ elif menu == "📝 거래 입력":
                 st.error(f"저장 중 오류가 발생했습니다: {str(e)}")
 
 # ========== 2. 가계부 조회 메뉴 ==========
+# ========== 2. 가계부 조회 메뉴 (중복 제거 및 기능 통합) ==========
 elif menu == "📊 가계부 조회":
-    st.header("가계부 조회")
+    st.header("가계부 조회 및 관리")
     
+    # 세션 상태 초기화 (어떤 항목을 수정 중인지 기억)
+    if 'editing_index' not in st.session_state:
+        st.session_state.editing_index = -1
+
     # 조회 방법 선택
     view_type = st.radio(
         "조회 방법",
@@ -141,64 +146,95 @@ elif menu == "📊 가계부 조회":
         horizontal=True
     )
     
-    transactions = []
+    transactions = [] # 변수 미정의 에러 방지용 초기화
     
-    # 일별 조회
+    # 1. 데이터 필터링 로직
     if view_type == "일별 조회":
         selected_date = st.date_input("날짜 선택", value=date.today())
         selected_datetime = datetime.combine(selected_date, datetime.min.time())
         transactions = ledger_service.get_daily_transactions(selected_datetime)
         st.subheader(f"📅 {selected_date} 거래 내역")
     
-    # 기간별 조회
     elif view_type == "기간별 조회":
         col1, col2 = st.columns(2)
         with col1:
-            start_date = st.date_input("시작 날짜", value=date.today().replace(day=1))
+            start_date = col1.date_input("시작 날짜", value=date.today().replace(day=1))
         with col2:
-            end_date = st.date_input("종료 날짜", value=date.today())
+            end_date = col2.date_input("종료 날짜", value=date.today())
         
         start_datetime = datetime.combine(start_date, datetime.min.time())
         end_datetime = datetime.combine(end_date, datetime.max.time())
-        
         transactions = repository.get_transactions_by_date_range(start_datetime, end_datetime)
         st.subheader(f"📅 {start_date} ~ {end_date} 거래 내역")
     
-    # 전체 조회
     else:
         transactions = repository.get_all_transactions()
         st.subheader("📅 전체 거래 내역")
     
-    # 거래 내역이 있는 경우
+    # 2. 거래 내역 출력 및 수정/삭제 기능
     if transactions:
         # 요약 정보 표시
         balance_info = ledger_service.calculate_balance(transactions)
-        
         col1, col2, col3 = st.columns(3)
-        with col1:
-            st.metric("총 수입", format_currency(balance_info['income']))
-        with col2:
-            st.metric("총 지출", format_currency(balance_info['expense']))
-        with col3:
-            balance_color = "normal" if balance_info['balance'] >= 0 else "inverse"
-            st.metric("잔액", format_currency(balance_info['balance']))
+        col1.metric("총 수입", format_currency(balance_info['income']))
+        col2.metric("총 지출", format_currency(balance_info['expense']))
+        col3.metric("잔액", format_currency(balance_info['balance']))
         
         st.markdown("---")
         
-        # 거래 내역 테이블로 표시
-        data = []
-        for t in transactions:
-            data.append({
-                '날짜': t.date.strftime('%Y-%m-%d'),
-                '구분': t.transaction_type,
-                '카테고리': t.category,
-                '금액': format_currency(t.amount),
-                '설명': t.description
-            })
-        
-        df = pd.DataFrame(data)
-        st.dataframe(df, use_container_width=True, hide_index=True)
-        
+        # 전체 거래 리스트 (실제 인덱스 매칭용)
+        all_transactions = repository.get_all_transactions()
+
+        for i, t in enumerate(transactions):
+            # 실제 데이터베이스(전체 리스트)에서의 인덱스 찾기
+            real_index = next((idx for idx, item in enumerate(all_transactions) if 
+                               item.date == t.date and item.category == t.category and 
+                               item.amount == t.amount and item.description == t.description), None)
+
+            if st.session_state.editing_index == i:
+                # [수정 모드] 폼 출력
+                with st.expander(f"📝 내역 수정 중: {t.category}", expanded=True):
+                    with st.form(key=f"edit_form_{i}"):
+                        e_date = st.date_input("날짜", value=t.date.date())
+                        e_type = st.selectbox("구분", ["수입", "지출"], index=0 if t.transaction_type == "수입" else 1)
+                        e_cat = st.text_input("카테고리", value=t.category)
+                        e_amt = st.number_input("금액", value=float(t.amount), step=100.0)
+                        e_desc = st.text_area("설명", value=t.description if str(t.description) != 'nan' else "")
+                        
+                        btn_col1, btn_col2 = st.columns(2)
+                        if btn_col1.form_submit_button("💾 수정 저장"):
+                            updated_tx = Transaction(
+                                date=datetime.combine(e_date, datetime.min.time()),
+                                category=e_cat,
+                                amount=e_amt,
+                                transaction_type=e_type,
+                                description=e_desc
+                            )
+                            ledger_service.update_transaction(real_index, updated_tx)
+                            st.session_state.editing_index = -1
+                            st.rerun()
+                        if btn_col2.form_submit_button("❌ 취소"):
+                            st.session_state.editing_index = -1
+                            st.rerun()
+            else:
+                # [일반 모드] 리스트 출력
+                with st.container():
+                    c_info, c_edit, c_del = st.columns([4, 1, 1])
+                    with c_info:
+                        st.write(f"**{t.date.strftime('%Y-%m-%d')}** | {t.transaction_type} | **{t.category}** | {format_currency(t.amount)}")
+                        if t.description: st.caption(f"💬 {t.description}")
+                    
+                    with c_edit:
+                        if st.button("📝 수정", key=f"btn_edit_{i}"):
+                            st.session_state.editing_index = i
+                            st.rerun()
+                    
+                    with c_del:
+                        if st.button("🗑️ 삭제", key=f"btn_del_{i}"):
+                            ledger_service.delete_transaction(real_index)
+                            st.warning("삭제되었습니다.")
+                            st.rerun()
+                st.divider()
     else:
         st.info("조회된 거래 내역이 없습니다.")
 
